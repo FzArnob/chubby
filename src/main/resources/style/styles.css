@@ -1,0 +1,225 @@
+/* Chubby Recorder Styles */
+
+/* Root styling */
+.root {
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-size: 12px;
+    -fx-background-color: #f5f5f5;
+}
+
+/* Title section */
+.title-section {
+    -fx-background-color: linear-gradient(to bottom, #4a90e2, #357abd);
+    -fx-background-radius: 5px;
+    -fx-text-fill: white;
+}
+
+.title-section .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+/* TitledPane styling */
+.titled-pane {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+}
+
+.titled-pane .title {
+    -fx-background-color: #e8e8e8;
+    -fx-text-fill: #333;
+    -fx-font-weight: bold;
+    -fx-padding: 5px 10px;
+}
+
+.titled-pane .content {
+    -fx-background-color: white;
+    -fx-border-radius: 0 0 5px 5px;
+    -fx-background-radius: 0 0 5px 5px;
+}
+
+/* ComboBox styling */
+.combo-box {
+    -fx-background-color: white;
+    -fx-border-color: #ccc;
+    -fx-border-radius: 3px;
+    -fx-background-radius: 3px;
+}
+
+.combo-box:focused {
+    -fx-border-color: #4a90e2;
+    -fx-border-width: 2px;
+}
+
+/* TextField styling */
+.text-field {
+    -fx-background-color: white;
+    -fx-border-color: #ccc;
+    -fx-border-radius: 3px;
+    -fx-background-radius: 3px;
+    -fx-padding: 5px;
+}
+
+.text-field:focused {
+    -fx-border-color: #4a90e2;
+    -fx-border-width: 2px;
+}
+
+/* Button styling */
+.button {
+    -fx-background-radius: 4px;
+    -fx-border-radius: 4px;
+    -fx-padding: 8px 16px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-opacity: 0.9;
+}
+
+.button:pressed {
+    -fx-opacity: 0.8;
+}
+
+/* Record button */
+.button.record-button {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+}
+
+.button.record-button:hover {
+    -fx-background-color: #45a049;
+}
+
+/* Pause button */
+.button.pause-button {
+    -fx-background-color: #FF9800;
+    -fx-text-fill: white;
+}
+
+.button.pause-button:hover {
+    -fx-background-color: #e68900;
+}
+
+/* Stop button */
+.button.stop-button {
+    -fx-background-color: #F44336;
+    -fx-text-fill: white;
+}
+
+.button.stop-button:hover {
+    -fx-background-color: #da190b;
+}
+
+/* Browse button */
+.button.browse-button {
+    -fx-background-color: #2196F3;
+    -fx-text-fill: white;
+}
+
+.button.browse-button:hover {
+    -fx-background-color: #1976D2;
+}
+
+/* Refresh button */
+.button.refresh-button {
+    -fx-background-color: #9C27B0;
+    -fx-text-fill: white;
+}
+
+.button.refresh-button:hover {
+    -fx-background-color: #7B1FA2;
+}
+
+/* CheckBox styling */
+.check-box {
+    -fx-font-size: 11px;
+}
+
+.check-box .box {
+    -fx-background-color: white;
+    -fx-border-color: #ccc;
+    -fx-border-width: 1px;
+    -fx-border-radius: 2px;
+    -fx-background-radius: 2px;
+}
+
+.check-box:selected .mark {
+    -fx-background-color: #4a90e2;
+}
+
+/* Label styling */
+.label {
+    -fx-text-fill: #333;
+}
+
+.label.status-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #4a90e2;
+}
+
+/* ProgressBar styling */
+.progress-bar {
+    -fx-background-color: #e0e0e0;
+    -fx-background-radius: 10px;
+}
+
+.progress-bar .bar {
+    -fx-background-color: #4a90e2;
+    -fx-background-radius: 10px;
+    -fx-background-insets: 1px;
+}
+
+/* Preview section */
+.preview-container {
+    -fx-background-color: #000;
+    -fx-border-color: #333;
+    -fx-border-width: 2px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+}
+
+.preview-container .label {
+    -fx-text-fill: #888;
+    -fx-font-style: italic;
+}
+
+/* Disabled controls */
+.button:disabled {
+    -fx-opacity: 0.5;
+    -fx-cursor: default;
+}
+
+.combo-box:disabled {
+    -fx-opacity: 0.7;
+}
+
+/* Spacing helpers */
+.spacing-small {
+    -fx-spacing: 5px;
+}
+
+.spacing-medium {
+    -fx-spacing: 10px;
+}
+
+.spacing-large {
+    -fx-spacing: 15px;
+}
+
+/* Padding helpers */
+.padding-small {
+    -fx-padding: 5px;
+}
+
+.padding-medium {
+    -fx-padding: 10px;
+}
+
+.padding-large {
+    -fx-padding: 15px;
+}
