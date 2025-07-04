@@ -45,12 +45,16 @@ public class SystemDiscoveryService {
         return CompletableFuture.supplyAsync(() -> {
             List<RecordingSource> sources = new ArrayList<>();
             
-            // Add default audio devices
-            sources.add(new RecordingSource("System Audio (Stereo Mix)", "Stereo Mix", RecordingSource.SourceType.AUDIO_DEVICE));
-            sources.add(new RecordingSource("Microphone", "Microphone", RecordingSource.SourceType.AUDIO_DEVICE));
+            // Try to discover audio devices using FFmpeg first
+            List<RecordingSource> discoveredDevices = getAvailableAudioDevices();
             
-            // Try to discover more audio devices using FFmpeg
-            sources.addAll(getAvailableAudioDevices());
+            if (!discoveredDevices.isEmpty()) {
+                sources.addAll(discoveredDevices);
+            } else {
+                // Fallback to common default names
+                sources.add(new RecordingSource("System Audio (Stereo Mix)", "Stereo Mix", RecordingSource.SourceType.AUDIO_DEVICE));
+                sources.add(new RecordingSource("Microphone", "Microphone", RecordingSource.SourceType.AUDIO_DEVICE));
+            }
             
             return sources;
         }, executorService);
@@ -114,13 +118,16 @@ public class SystemDiscoveryService {
         try {
             // Use FFmpeg to list DirectShow devices
             ProcessBuilder pb = new ProcessBuilder("ffmpeg", "-list_devices", "true", "-f", "dshow", "-i", "dummy");
+            pb.redirectErrorStream(true); // Combine stdout and stderr
             Process process = pb.start();
             
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 boolean inAudioSection = false;
                 
                 while ((line = reader.readLine()) != null) {
+                    System.out.println("FFmpeg device discovery: " + line); // Debug output
+                    
                     if (line.contains("DirectShow audio devices")) {
                         inAudioSection = true;
                         continue;
@@ -132,20 +139,25 @@ public class SystemDiscoveryService {
                     
                     if (inAudioSection && line.contains("\"")) {
                         // Extract device name from quotes
-                        int start = line.indexOf("\"") + 1;
+                        int start = line.indexOf("\"");
                         int end = line.lastIndexOf("\"");
-                        if (start < end) {
-                            String deviceName = line.substring(start, end);
-                            devices.add(new RecordingSource(deviceName, deviceName, RecordingSource.SourceType.AUDIO_DEVICE));
+                        if (start != -1 && end != -1 && start < end) {
+                            String deviceName = line.substring(start + 1, end);
+                            if (!deviceName.trim().isEmpty()) {
+                                System.out.println("Found audio device: " + deviceName);
+                                devices.add(new RecordingSource(deviceName, deviceName, RecordingSource.SourceType.AUDIO_DEVICE));
+                            }
                         }
                     }
                 }
             }
             
-            process.waitFor();
+            int exitCode = process.waitFor();
+            System.out.println("FFmpeg device discovery exit code: " + exitCode);
             
         } catch (Exception e) {
-            // Ignore errors, use default devices only
+            System.err.println("Error discovering audio devices: " + e.getMessage());
+            e.printStackTrace();
         }
         
         return devices;

@@ -8,6 +8,7 @@ import java.util.ResourceBundle;
 import com.screenrecorder.model.RecordingConfig;
 import com.screenrecorder.model.RecordingSource;
 import com.screenrecorder.model.Resolution;
+import com.screenrecorder.service.FFmpegService;
 import com.screenrecorder.service.OBSRecordingService;
 import com.screenrecorder.service.SystemDiscoveryService;
 
@@ -51,7 +52,7 @@ public class ScreenRecorderController implements Initializable {
     @FXML private MediaView previewMediaView;
     
     // Services
-    private final OBSRecordingService obsService;
+    private final FFmpegService ffmpegService;
     private final SystemDiscoveryService discoveryService;
     private final RecordingConfig recordingConfig;
     
@@ -59,7 +60,7 @@ public class ScreenRecorderController implements Initializable {
     private MediaPlayer previewPlayer;
     
     public ScreenRecorderController() {
-        this.obsService = new OBSRecordingService();
+        this.ffmpegService = new FFmpegService();
         this.discoveryService = new SystemDiscoveryService();
         this.recordingConfig = new RecordingConfig();
     }
@@ -104,16 +105,14 @@ public class ScreenRecorderController implements Initializable {
      * Setup property bindings
      */
     private void setupBindings() {
-        // Bind button states to recording status (using OBS service)
-        recordButton.disableProperty().bind(obsService.recordingProperty());
-        pauseButton.disableProperty().bind(obsService.recordingProperty().not());
-        stopButton.disableProperty().bind(obsService.recordingProperty().not());
+        recordButton.disableProperty().bind(ffmpegService.recordingProperty());
+        pauseButton.disableProperty().bind(ffmpegService.recordingProperty().not());
+        stopButton.disableProperty().bind(ffmpegService.recordingProperty().not());
         
-        // Bind status label to OBS service
-        statusLabel.textProperty().bind(obsService.statusProperty());
+        statusLabel.textProperty().bind(ffmpegService.statusProperty());
         
         // Update record button text based on pause state
-        obsService.pausedProperty().addListener((obs, oldVal, newVal) -> {
+        ffmpegService.pausedProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal) {
                 recordButton.setText("Resume");
                 recordButton.setDisable(false);
@@ -195,29 +194,16 @@ public class ScreenRecorderController implements Initializable {
      * Check if OBS Studio is available
      */
     private void checkOBSAvailability() {
-        obsService.isOBSAvailable().thenAccept(available -> {
+        ffmpegService.isFFmpegAvailable().thenAccept(available -> {
             Platform.runLater(() -> {
                 if (!available) {
                     Alert alert = new Alert(Alert.AlertType.WARNING);
-                    alert.setTitle("OBS Studio Not Found");
-                    alert.setHeaderText("OBS Studio is required for recording");
-                    alert.setContentText("Please install OBS Studio and ensure it's running with WebSocket server enabled.");
+                    alert.setTitle("FFmpeg Not Found");
+                    alert.setHeaderText("FFmpeg is required for recording");
+                    alert.setContentText("Please install FFmpeg and add to path variables.");
                     alert.showAndWait();
                     
                     recordButton.setDisable(true);
-                } else {
-                    // Check WebSocket connection
-                    obsService.testOBSConnection().thenAccept(connected -> {
-                        Platform.runLater(() -> {
-                            if (!connected) {
-                                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                                alert.setTitle("OBS WebSocket");
-                                alert.setHeaderText("Enable OBS WebSocket Server");
-                                alert.setContentText("Please enable WebSocket server in OBS: Tools > WebSocket Server Settings");
-                                alert.showAndWait();
-                            }
-                        });
-                    });
                 }
             });
         });
@@ -237,9 +223,9 @@ public class ScreenRecorderController implements Initializable {
     
     @FXML
     private void onRecordClicked() {
-        if (obsService.pausedProperty().get()) {
+        if (ffmpegService.pausedProperty().get()) {
             // Resume recording
-            obsService.togglePause();
+            ffmpegService.togglePause();
         } else {
             // Start new recording
             startOBSRecording();
@@ -248,12 +234,12 @@ public class ScreenRecorderController implements Initializable {
     
     @FXML
     private void onPauseClicked() {
-        obsService.togglePause();
+        ffmpegService.togglePause();
     }
     
     @FXML
     private void onStopClicked() {
-        obsService.stopRecording();
+        ffmpegService.stopRecording();
     }
     
     @FXML
@@ -279,10 +265,10 @@ public class ScreenRecorderController implements Initializable {
      */
     private void startOBSRecording() {
         // First check if OBS is available
-        obsService.isOBSAvailable().thenAccept(available -> {
+        ffmpegService.isFFmpegAvailable().thenAccept(available -> {
             if (!available) {
                 Platform.runLater(() -> {
-                    showError("OBS Studio is not running. Please start OBS Studio first.");
+                    showError("ffmpeg is not running. Please start OBS Studio first.");
                 });
                 return;
             }
@@ -293,7 +279,7 @@ public class ScreenRecorderController implements Initializable {
             }
             
             // Start OBS recording
-            obsService.startRecording(recordingConfig).thenAccept(success -> {
+            ffmpegService.startRecording(recordingConfig).thenAccept(success -> {
                 if (!success) {
                     Platform.runLater(() -> {
                         showError("Failed to start OBS recording. Please check OBS settings and try again.");
@@ -321,7 +307,7 @@ public class ScreenRecorderController implements Initializable {
         if (previewPlayer != null) {
             previewPlayer.dispose();
         }
-        obsService.shutdown();
+        ffmpegService.shutdown();
         discoveryService.shutdown();
     }
 }

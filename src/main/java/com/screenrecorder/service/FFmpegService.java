@@ -105,11 +105,35 @@ public class FFmpegService {
      */
     public void stopRecording() {
         if (ffmpegProcess != null && ffmpegProcess.isAlive()) {
-            ffmpegProcess.destroy();
             try {
+                // Send 'q' command to FFmpeg for graceful shutdown
+                ffmpegProcess.getOutputStream().write("q\n".getBytes());
+                ffmpegProcess.getOutputStream().flush();
+                
+                // Close the output stream to signal FFmpeg we're done sending commands
+                ffmpegProcess.getOutputStream().close();
+                
+                // Wait indefinitely for FFmpeg to finish and properly close the video file
+                // This ensures the video file is always properly finalized, no matter how long it takes
+                System.out.println("Waiting for FFmpeg to finish writing video file...");
                 ffmpegProcess.waitFor();
+                System.out.println("FFmpeg shutdown gracefully");
+                
+            } catch (IOException e) {
+                // If sending 'q' fails, try graceful destroy first
+                System.out.println("Could not send quit command to FFmpeg, trying graceful destroy");
+                ffmpegProcess.destroy();
+                try {
+                    // Wait indefinitely for graceful shutdown
+                    ffmpegProcess.waitFor();
+                    System.out.println("FFmpeg shutdown gracefully after destroy signal");
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    ffmpegProcess.destroyForcibly();
+                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                ffmpegProcess.destroyForcibly();
             }
         }
         
@@ -133,9 +157,16 @@ public class FFmpegService {
                 try {
                     ffmpegProcess.getOutputStream().write("q\n".getBytes());
                     ffmpegProcess.getOutputStream().flush();
-                } catch (IOException e) {
+                    ffmpegProcess.getOutputStream().close();
+                    
+                    // Wait indefinitely for graceful shutdown
+                    ffmpegProcess.waitFor();
+                } catch (IOException | InterruptedException e) {
                     // Fallback to destroy
-                    ffmpegProcess.destroy();
+                    ffmpegProcess.destroyForcibly();
+                    if (e instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                    }
                 }
             }
             Platform.runLater(() -> statusProperty.set("Paused"));
@@ -170,19 +201,14 @@ public class FFmpegService {
             addScreenCaptureArgs(command);
         }
         
-        // Audio input - only if audio recording is enabled
-        // For now, disable audio to ensure video recording works first
-        // TODO: Fix audio recording later
-        command.add("-an"); // No audio for now
-        
-        /*
+        // Audio input - handle audio properly for Windows Media Player compatibility
         if (config.isRecordSystemAudio() || config.isRecordMicrophone()) {
+            // Try real audio first, but we'll add fallback logic in case it fails
             addAudioCaptureArgs(command, config);
         } else {
-            // No audio recording - add -an flag to disable audio
-            command.add("-an");
+            // Even if not recording audio, add a silent audio track for better compatibility
+            addSilentAudio(command);
         }
-        */
         
         // Video encoding settings
         command.add("-c:v");
@@ -191,17 +217,18 @@ public class FFmpegService {
         command.add("fast");
         command.add("-crf");
         command.add("23");
+        command.add("-pix_fmt");
+        command.add("yuv420p"); // Ensure compatibility with Windows Media Player
         
-        // Audio encoding settings (only if recording audio)
-        // Disabled for now until audio recording is fixed
-        /*
-        if (config.isRecordSystemAudio() || config.isRecordMicrophone()) {
-            command.add("-c:a");
-            command.add("aac");
-            command.add("-b:a");
-            command.add("128k");
-        }
-        */
+        // Audio encoding settings - always include for Windows Media Player compatibility
+        command.add("-c:a");
+        command.add("aac");
+        command.add("-b:a");
+        command.add("128k");
+        command.add("-ar");
+        command.add("48000"); // Sample rate
+        command.add("-ac");
+        command.add("2"); // Stereo channels
         
         // Frame rate
         command.add("-r");
@@ -213,9 +240,11 @@ public class FFmpegService {
             command.add(config.getResolution().getResolutionString());
         }
         
-        // Duration limit (remove for continuous recording)
-        // command.add("-t");
-        // command.add("3600"); // 1 hour max
+        // MP4 container settings for Windows Media Player compatibility
+        command.add("-movflags");
+        command.add("+faststart"); // Move metadata to beginning of file for better streaming
+        command.add("-strict");
+        command.add("experimental");
         
         // Output file
         command.add(config.getVideoOutputFile().getAbsolutePath());
@@ -248,44 +277,68 @@ public class FFmpegService {
         command.add("-i");
         command.add("title=" + config.getVideoSource().getIdentifier());
     }
-    
     /**
      * Add audio capture arguments for Windows
      */
     private void addAudioCaptureArgs(List<String> command, RecordingConfig config) {
-        // Try to add system audio first
-        if (config.isRecordSystemAudio()) {
-            try {
-                // Windows: Use dshow for audio capture
-                // Try common system audio device names
-                command.add("-f");
-                command.add("dshow");
-                command.add("-i");
-                command.add("audio=\"Stereo Mix\""); // Default system audio
-            } catch (Exception e) {
-                // If system audio fails, continue without it
-                System.err.println("Warning: Could not add system audio: " + e.getMessage());
+        // For Windows, we need to handle audio inputs differently
+        boolean hasSystemAudio = config.isRecordSystemAudio();
+        boolean hasMicrophone = config.isRecordMicrophone();
+        
+        // Get the actual audio source names from config if available
+        String systemAudioDevice = "Stereo Mix";
+        String microphoneDevice = "Microphone";
+        
+        if (config.getAudioSource() != null) {
+            String deviceName = config.getAudioSource().getIdentifier();
+            if (config.isRecordSystemAudio() && deviceName.toLowerCase().contains("stereo") || 
+                deviceName.toLowerCase().contains("system") || deviceName.toLowerCase().contains("speaker")) {
+                systemAudioDevice = deviceName;
+            } else if (config.isRecordMicrophone() && (deviceName.toLowerCase().contains("mic") || 
+                      deviceName.toLowerCase().contains("input"))) {
+                microphoneDevice = deviceName;
             }
         }
         
-        // Add microphone if enabled
-        if (config.isRecordMicrophone()) {
-            try {
-                // Add microphone input
-                command.add("-f");
-                command.add("dshow");
-                command.add("-i");
-                command.add("audio=\"Microphone\""); // Default microphone
-            } catch (Exception e) {
-                // If microphone fails, continue without it
-                System.err.println("Warning: Could not add microphone: " + e.getMessage());
-            }
+        if (hasSystemAudio && hasMicrophone) {
+            // Record both system audio and microphone
+            command.add("-f");
+            command.add("dshow");
+            command.add("-i");
+            command.add("audio=" + systemAudioDevice);
+            command.add("-f");
+            command.add("dshow");
+            command.add("-i");
+            command.add("audio=" + microphoneDevice);
+            command.add("-filter_complex");
+            command.add("[1:a][2:a]amix=inputs=2[a]");
+            command.add("-map");
+            command.add("0:v");
+            command.add("-map");
+            command.add("[a]");
+        } else if (hasSystemAudio) {
+            // Record only system audio using dshow
+            command.add("-f");
+            command.add("dshow");
+            command.add("-i");
+            command.add("audio=" + systemAudioDevice);
+        } else if (hasMicrophone) {
+            // Record only microphone using dshow
+            command.add("-f");
+            command.add("dshow");
+            command.add("-i");
+            command.add("audio=" + microphoneDevice);
         }
-        
-        // If both audio sources failed or are disabled, disable audio
-        if (!config.isRecordSystemAudio() && !config.isRecordMicrophone()) {
-            command.add("-an"); // No audio
-        }
+    }
+    
+    /**
+     * Add silent audio track for compatibility
+     */
+    private void addSilentAudio(List<String> command) {
+        command.add("-f");
+        command.add("lavfi");
+        command.add("-i");
+        command.add("anullsrc=channel_layout=stereo:sample_rate=48000");
     }
     
     /**
@@ -309,9 +362,21 @@ public class FFmpegService {
                     // Check for errors
                     if (outputLine.toLowerCase().contains("error") || 
                         outputLine.toLowerCase().contains("failed") ||
-                        outputLine.toLowerCase().contains("invalid")) {
+                        outputLine.toLowerCase().contains("invalid") ||
+                        outputLine.toLowerCase().contains("could not open") ||
+                        outputLine.toLowerCase().contains("no such file")) {
                         hasError[0] = true;
                         errorOutput.append(outputLine).append("\n");
+                        
+                        // If it's an audio-related error, we might want to restart with silent audio
+                        if (outputLine.toLowerCase().contains("audio") && 
+                            (outputLine.toLowerCase().contains("error opening") ||
+                             outputLine.toLowerCase().contains("could not open") ||
+                             outputLine.toLowerCase().contains("unknown input format") ||
+                             outputLine.toLowerCase().contains("invalid argument"))) {
+                            System.err.println("Audio device error detected: " + outputLine);
+                            System.err.println("Consider restarting recording with silent audio only");
+                        }
                     }
                     
                     Platform.runLater(() -> {
