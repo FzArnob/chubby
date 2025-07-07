@@ -8,7 +8,7 @@ import java.util.ResourceBundle;
 import com.screenrecorder.model.RecordingConfig;
 import com.screenrecorder.model.RecordingSource;
 import com.screenrecorder.model.Resolution;
-import com.screenrecorder.service.OBSRecordingService;
+import com.screenrecorder.service.OBSPortableRecordingService;
 import com.screenrecorder.service.SystemDiscoveryService;
 
 import javafx.application.Platform;
@@ -51,7 +51,7 @@ public class ScreenRecorderController implements Initializable {
     @FXML private MediaView previewMediaView;
     
     // Services
-    private final OBSRecordingService obsService;
+    private final OBSPortableRecordingService obsService;
     private final SystemDiscoveryService discoveryService;
     private final RecordingConfig recordingConfig;
     
@@ -59,7 +59,7 @@ public class ScreenRecorderController implements Initializable {
     private MediaPlayer previewPlayer;
     
     public ScreenRecorderController() {
-        this.obsService = new OBSRecordingService();
+        this.obsService = new OBSPortableRecordingService();
         this.discoveryService = new SystemDiscoveryService();
         this.recordingConfig = new RecordingConfig();
     }
@@ -195,29 +195,13 @@ public class ScreenRecorderController implements Initializable {
      * Check if OBS Studio is available
      */
     private void checkOBSAvailability() {
-        obsService.isOBSAvailable().thenAccept(available -> {
+        // Initialize the portable OBS service
+        obsService.initializeAsync().thenAccept(initialized -> {
             Platform.runLater(() -> {
-                if (!available) {
-                    Alert alert = new Alert(Alert.AlertType.WARNING);
-                    alert.setTitle("OBS Studio Not Found");
-                    alert.setHeaderText("OBS Studio is required for recording");
-                    alert.setContentText("Please install OBS Studio and ensure it's running with WebSocket server enabled.");
-                    alert.showAndWait();
-                    
-                    recordButton.setDisable(true);
+                if (!initialized) {
+                    showError("Failed to initialize OBS Studio. Please check the logs for details.");
                 } else {
-                    // Check WebSocket connection
-                    obsService.testOBSConnection().thenAccept(connected -> {
-                        Platform.runLater(() -> {
-                            if (!connected) {
-                                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                                alert.setTitle("OBS WebSocket");
-                                alert.setHeaderText("Enable OBS WebSocket Server");
-                                alert.setContentText("Please enable WebSocket server in OBS: Tools > WebSocket Server Settings");
-                                alert.showAndWait();
-                            }
-                        });
-                    });
+                    obsService.statusProperty().set("OBS Studio ready for recording");
                 }
             });
         });
@@ -278,28 +262,18 @@ public class ScreenRecorderController implements Initializable {
      * Start OBS recording with current configuration
      */
     private void startOBSRecording() {
-        // First check if OBS is available
-        obsService.isOBSAvailable().thenAccept(available -> {
-            if (!available) {
+        // Validate configuration
+        if (!recordingConfig.getOutputDirectory().exists()) {
+            recordingConfig.getOutputDirectory().mkdirs();
+        }
+        
+        // Start OBS recording
+        obsService.startRecording(recordingConfig).thenAccept(success -> {
+            if (!success) {
                 Platform.runLater(() -> {
-                    showError("OBS Studio is not running. Please start OBS Studio first.");
+                    showError("Failed to start OBS recording. Please check OBS settings and try again.");
                 });
-                return;
             }
-            
-            // Validate configuration
-            if (!recordingConfig.getOutputDirectory().exists()) {
-                recordingConfig.getOutputDirectory().mkdirs();
-            }
-            
-            // Start OBS recording
-            obsService.startRecording(recordingConfig).thenAccept(success -> {
-                if (!success) {
-                    Platform.runLater(() -> {
-                        showError("Failed to start OBS recording. Please check OBS settings and try again.");
-                    });
-                }
-            });
         });
     }
     

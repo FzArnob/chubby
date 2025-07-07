@@ -1,0 +1,51 @@
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.2.0 
+          http://maven.apache.org/xsd/assembly-2.2.0.xsd">
+    <id>distribution</id>
+    <formats>
+        <format>zip</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
+    
+    <fileSets>
+        <!-- Include the main executable -->
+        <fileSet>
+            <directory>${project.build.directory}</directory>
+            <includes>
+                <include>ChubbyRecorder.exe</include>
+            </includes>
+            <outputDirectory>/</outputDirectory>
+        </fileSet>
+        
+        <!-- Include documentation -->
+        <fileSet>
+            <directory>${project.basedir}</directory>
+            <includes>
+                <include>README.md</include>
+                <include>LICENSE</include>
+                <include>OBS-INTEGRATION-GUIDE.md</include>
+            </includes>
+            <outputDirectory>/docs</outputDirectory>
+        </fileSet>
+        
+        <!-- Include startup scripts -->
+        <fileSet>
+            <directory>${project.basedir}/scripts</directory>
+            <includes>
+                <include>**/*</include>
+            </includes>
+            <outputDirectory>/</outputDirectory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+    </fileSets>
+    
+    <files>
+        <!-- Include the shaded JAR as backup -->
+        <file>
+            <source>${project.build.directory}/${project.artifactId}-${project.version}.jar</source>
+            <outputDirectory>/lib</outputDirectory>
+            <destName>ChubbyRecorder.jar</destName>
+        </file>
+    </files>
+</assembly>

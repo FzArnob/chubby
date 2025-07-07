@@ -1,6 +1,10 @@
 # Chubby Screen Recorder
 
-A comprehensive silent screen recorder application built with JavaFX 21 and FFmpeg, featuring live preview, multiple recording sources, and flexible output options.
+A comprehensive silent screen recorder application built with JavaFX 21 and **bundled OBS Studio**, featuring automatic setup, live preview, multiple recording sources, and flexible output options.
+
+## 🚀 Zero Installation Required
+
+**NEW: Bundled OBS Edition** - No separate software installation needed! Just run the executable and start recording immediately.
 
 ## Features
 
@@ -33,20 +37,35 @@ A comprehensive silent screen recorder application built with JavaFX 21 and FFmp
 - **Stop**: Stop and save recording
 - **Real-time Status**: Live recording status and progress
 
-## Prerequisites
+### 📦 Bundled OBS Studio
+- **Automatic Download**: OBS Studio downloads automatically on first run
+- **Zero Configuration**: Pre-configured for optimal recording
+- **Background Operation**: Runs silently without user intervention
+- **Professional Quality**: Uses OBS's mature recording engine
+
+## Quick Start (Bundled Version)
+
+### For End Users
+1. **Download** `ChubbyRecorder.exe`
+2. **Run** the executable
+3. **Wait** for OBS Studio to download and configure (first run only)
+4. **Start Recording** immediately!
+
+### System Requirements
+- Windows 10/11 (64-bit)
+- Java 21+ (prompted for download if missing)
+- 500MB free disk space (for OBS bundle)
+- Internet connection (first run only)
+
+## Prerequisites for Development
 
 ### Required Software
-1. **Java 17 or higher**
+1. **Java 21 or higher**
 2. **JavaFX 21**
-3. **FFmpeg** - Must be installed and accessible from system PATH
+3. **Maven 3.6+**
 
-### Installing FFmpeg
-
-#### Windows
-1. Download FFmpeg from https://ffmpeg.org/download.html
-2. Extract to a folder (e.g., `C:\ffmpeg`)
-3. Add `C:\ffmpeg\bin` to your system PATH
-4. Verify installation: `ffmpeg -version`
+### No FFmpeg Required
+The bundled OBS version eliminates the need for separate FFmpeg installation!
 
 #### macOS
 ```bash
