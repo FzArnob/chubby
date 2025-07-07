@@ -1,0 +1,11 @@
+# Ignore IntelliJ project files
+.idea/
+
+# Ignore VSCode project files
+.vscode/
+
+# Ignore OBS Studio folder
+obs-studio/
+
+# Ignore build output (Java, Maven, etc.)
+target/
